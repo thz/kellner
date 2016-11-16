@@ -23,7 +23,7 @@ import (
 // a bundle can be a zip-archive/tar-archive/text-file
 // (currently implemented: zip-archive and primitive
 // list to stdout)
-func (self *packageIndex) writeBundle(output string, archsubdirs bool) error {
+func (self *packageIndex) writeBundle(output string, archsubdirs bool, withindex bool) error {
 	now := time.Now()
 	// now let us create a zipfile with the condensated files
 	if output == "-" {
@@ -40,10 +40,33 @@ func (self *packageIndex) writeBundle(output string, archsubdirs bool) error {
 		zipper := zip.NewWriter(zipfile)
 		defer zipper.Close()
 
+		arch_map := map[string]io.Writer{}
 		for _, pkg := range self.Entries {
 			header := &zip.FileHeader{Name: pkg.Name}
 			if archsubdirs {
 				header.Name = filepath.Join(pkg.Header["Architecture"], header.Name)
+			}
+			if withindex {
+				idxwriter, has := arch_map[pkg.Header["Architecture"]]
+				if !has {
+					idxheader := &zip.FileHeader{Name: "Packages"}
+					if archsubdirs {
+						idxheader.Name = filepath.Join(pkg.Header["Architecture"], "Packages")
+					} else {
+						if len(arch_map) > 0 {
+							return fmt.Errorf("non-unique architectures and index requested.")
+						}
+					}
+					idxheader.SetModTime(now)
+					wr, idxzerr := zipper.CreateHeader(idxheader)
+					if idxzerr != nil {
+						return idxzerr
+					}
+					idxwriter = wr
+					arch_map[pkg.Header["Architecture"]] = idxwriter
+				}
+				pkg.ControlAndChecksumTo(idxwriter)
+				fmt.Fprintln(idxwriter)
 			}
 			header.SetModTime(now)
 			writer, zwerr := zipper.CreateHeader(header)

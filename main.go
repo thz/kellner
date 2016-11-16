@@ -53,9 +53,10 @@ func main() {
 		tlsClientIDMuxRoot   = flag.String("idmap", "", "directory containing the client-mappings")
 		printClientCert      = flag.String("print-client-cert-id", "", "print client-id for given .cert and exit")
 
-		condense    = flag.String("condense", "", "condense packages. argument is the target. (\"-\" is stdout and will just list filenames)")
-		vcomp       = flag.Bool("vcomp", false, "compare the first two non-flag arguments as versions")
-		archsubdirs = flag.Bool("archsubdirs", true, "create a subdir per arch when bundling packages")
+		condense      = flag.String("condense", "", "condense packages. argument is the target. (\"-\" is stdout and will just list filenames)")
+		vcomp         = flag.Bool("vcomp", false, "compare the first two non-flag arguments as versions")
+		archsubdirs   = flag.Bool("archsubdirs", true, "create a subdir per arch when bundling packages")
+		flagWithIndex = flag.Bool("index", true, "create Packages-index in bundle")
 
 		listen net.Listener
 		err    error
@@ -87,7 +88,7 @@ func main() {
 			condensate *packageIndex
 		)
 		if condensate, err = condensePackages(flag.Args(), *nworkers); err == nil {
-			if err = condensate.writeBundle(*condense, *archsubdirs); err == nil {
+			if err = condensate.writeBundle(*condense, *archsubdirs, *flagWithIndex); err == nil {
 				os.Exit(0)
 			}
 		}
